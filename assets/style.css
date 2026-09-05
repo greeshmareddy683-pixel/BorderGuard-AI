@@ -1,0 +1,216 @@
+/* BORDERGUARD AI - Command Center Theme */
+
+/* Import Inter / JetBrains Mono fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+html, body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Background & Core Layout */
+.stApp {
+    background-color: #0b0f19;
+    color: #f8fafc;
+}
+
+/* Sidebar Customization */
+[data-testid="stSidebar"] {
+    background-color: #090d16;
+    border-right: 1px solid #1e293b;
+}
+
+/* Hide Streamlit Header background */
+header[data-testid="stHeader"] {
+    background-color: rgba(11, 15, 25, 0.8);
+    backdrop-filter: blur(8px);
+}
+
+/* Custom Header Banner */
+.command-header {
+    background: linear-gradient(90deg, #131b2e 0%, #0f172a 100%);
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+}
+
+.command-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #38bdf8;
+    margin: 0 0 6px 0;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.command-subtitle {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin: 0;
+}
+
+/* Metric Cards */
+.metric-card {
+    background-color: #131b2e;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 16px 20px;
+    transition: border-color 0.2s ease;
+}
+
+.metric-card:hover {
+    border-color: #334155;
+}
+
+.metric-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #94a3b8;
+    margin-bottom: 6px;
+}
+
+.metric-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #f8fafc;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.metric-value.high { color: #ef4444; }
+.metric-value.medium { color: #f59e0b; }
+.metric-value.low { color: #22c55e; }
+.metric-value.info { color: #38bdf8; }
+
+/* Status Badges */
+.status-pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.status-high, .status-blacklisted, .status-revoked {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.status-medium, .status-suspicious, .status-expired {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.status-low, .status-valid, .status-match {
+    background-color: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+/* Pipeline Step Flow */
+.pipeline-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #131b2e;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 16px 24px;
+    margin: 20px 0;
+}
+
+.pipeline-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.step-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #1e293b;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.85rem;
+    border: 1px solid #334155;
+}
+
+.step-icon.active {
+    background-color: rgba(56, 189, 248, 0.2);
+    color: #38bdf8;
+    border-color: #38bdf8;
+}
+
+.step-icon.done {
+    background-color: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+    border-color: #22c55e;
+}
+
+.step-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #94a3b8;
+    letter-spacing: 0.5px;
+}
+
+.pipeline-arrow {
+    color: #334155;
+    font-size: 1.2rem;
+}
+
+/* Card Container */
+.content-card {
+    background-color: #131b2e;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.card-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #f8fafc;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Standard Button Customization - Exclude File Uploader */
+div.stButton > button {
+    background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff !important;
+    font-weight: 600;
+    border: 1px solid #38bdf8;
+    border-radius: 6px;
+    padding: 8px 20px;
+    transition: all 0.2s ease;
+}
+
+div.stButton > button:hover {
+    background: linear-gradient(180deg, #0369a1 0%, #075985 100%);
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    border-color: #7dd3fc;
+}
+
+/* File Uploader Clean Styling */
+[data-testid="stFileUploader"] {
+    background-color: #0f172a;
+    border: 1px dashed #334155;
+    border-radius: 8px;
+    padding: 10px;
+}
