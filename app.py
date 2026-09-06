@@ -1,8 +1,15 @@
+import sys
+from pathlib import Path
+
+# Add project root to sys.path at index 0 for Streamlit Cloud package resolution
+ROOT_DIR = Path(__file__).resolve().parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 import time
 import json
 import logging
 import streamlit as st
-from pathlib import Path
 from PIL import Image
 import numpy as np
 

@@ -4,14 +4,20 @@ import logging
 import sys
 from pathlib import Path
 
-# Add project root to sys.path
-sys.path.append(str(Path(__file__).resolve().parent.parent))
+# Add project root to sys.path at index 0
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from config import DB_PATH, DATABASE_DIR
+
 try:
     from database.demo_data import SYNTHETIC_WATCHLIST, SYNTHETIC_SCREENINGS
-except ModuleNotFoundError:
-    from demo_data import SYNTHETIC_WATCHLIST, SYNTHETIC_SCREENINGS
+except (ImportError, ModuleNotFoundError):
+    try:
+        from demo_data import SYNTHETIC_WATCHLIST, SYNTHETIC_SCREENINGS
+    except (ImportError, ModuleNotFoundError):
+        from .demo_data import SYNTHETIC_WATCHLIST, SYNTHETIC_SCREENINGS
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("BORDERGUARD_DB")
