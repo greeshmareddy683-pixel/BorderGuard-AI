@@ -80,6 +80,148 @@ def render_header(title, subtitle):
         </div>
     """, unsafe_allow_html=True)
 
+# Function to render screening results cleanly
+def render_screening_results(s):
+    st.markdown("---")
+    risk_lvl = s["risk_level"]
+    risk_cls = "high" if risk_lvl == "HIGH" else ("medium" if risk_lvl == "MEDIUM" else "low")
+    
+    # High Risk Alert Dispatch Banner
+    if risk_lvl == "HIGH":
+        st.markdown(f"""
+            <div style='background: linear-gradient(90deg, #7f1d1d 0%, #991b1b 100%); border: 2px solid #ef4444; border-radius: 8px; padding: 14px 20px; margin-bottom: 15px;'>
+                <div style='font-size:1.1rem; font-weight:700; color:#f8fafc;'>🚨 SECURITY THREAT ALERT DISPATCHED</div>
+                <p style='margin:4px 0 0 0; color:#fca5a5; font-size:0.85rem;'>Screening ID {s['screening_id']} flagged as HIGH RISK ({s['risk_score']}/100). Automated dispatch sent to Duty Supervisor & Counter Officer.</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+        <div class='content-card' style='border-left: 6px solid #ef4444;'>
+            <div style='display:flex; justify-content:space-between; align-items:center;'>
+                <div>
+                    <h2 style='margin:0; color:#38bdf8; font-family:monospace;'>SCREENING COMPLETE — {s['screening_id']}</h2>
+                    <p style='color:#94a3b8; margin-top:4px;'>Processed in {s['processing_time_sec']}s • {s['timestamp']}</p>
+                </div>
+                <div style='text-align:right;'>
+                    <div style='font-size:2.2rem; font-weight:700;' class='metric-value {risk_cls}'>{s['risk_score']} / 100</div>
+                    <span class='status-pill status-{risk_cls}'>{risk_lvl} RISK</span>
+                </div>
+            </div>
+            <hr style='border-color:#1e293b; margin:15px 0;'>
+            <div style='font-size:1.1rem; font-weight:700; color:#f8fafc;'>
+                RECOMMENDED ACTION: <span style='color:#ef4444;'>{s['final_decision']}</span>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # 5 Module Summaries
+    m1, m2, m3, m4, m5 = st.columns(5)
+    with m1:
+        st.markdown(f"<div class='metric-card'><div class='metric-label'>OCR Extraction</div><div class='metric-value info'>{int(s['ocr_confidence']*100)}%</div></div>", unsafe_allow_html=True)
+    with m2:
+        val_st = s["validation_results"].get("status", "PASSED")
+        val_color = "low" if val_st == "PASSED" else "high"
+        st.markdown(f"<div class='metric-card'><div class='metric-label'>Doc Validation</div><div class='metric-value {val_color}'>{val_st}</div></div>", unsafe_allow_html=True)
+    with m3:
+        tamp_k = s["tampering_results"].get("tampering_risk", 0)
+        tamp_color = "high" if tamp_k > 50 else "low"
+        st.markdown(f"<div class='metric-card'><div class='metric-label'>Tampering Risk</div><div class='metric-value {tamp_color}'>{tamp_k}%</div></div>", unsafe_allow_html=True)
+    with m4:
+        face_st = s["face_status"]
+        face_color = "low" if face_st == "MATCH" else "high"
+        st.markdown(f"<div class='metric-card'><div class='metric-label'>Face Match</div><div class='metric-value {face_color}'>{s['face_match_score']}%</div></div>", unsafe_allow_html=True)
+    with m5:
+        db_rec = s["validation_results"].get("db_record")
+        db_status = db_rec.get("status") if db_rec else "CLEAR"
+        db_color = "high" if db_status in ["BLACKLISTED", "REVOKED"] else "low"
+        st.markdown(f"<div class='metric-card'><div class='metric-label'>Security DB</div><div class='metric-value {db_color}'>{db_status}</div></div>", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Detailed Factor Analysis & Advanced Visual Tabs
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "📌 Key Findings & Factors", 
+        "📄 Extracted Fields & MRZ", 
+        "🔍 Tampering & ELA Map", 
+        "🔦 UV Lamp Security Check", 
+        "👤 Face Match & Liveness", 
+        "📶 e-Passport NFC Chip"
+    ])
+
+    with tab1:
+        st.markdown("<div class='content-card'><div class='card-title'>🔴 CONTRIBUTING RISK FACTORS (EXPLAINABLE AI)</div>", unsafe_allow_html=True)
+        for factor in s["contributing_factors"]:
+            if factor.startswith("+"):
+                st.markdown(f"<p style='color:#ef4444; font-family:monospace; margin:4px 0;'>{factor}</p>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<p style='color:#22c55e; font-family:monospace; margin:4px 0;'>{factor}</p>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with tab2:
+        st.markdown("<div class='content-card'><div class='card-title'>📄 EXTRACTED DOCUMENT FIELDS</div>", unsafe_allow_html=True)
+        st.json(s["extracted_fields"])
+        st.code(f"MRZ READOUT:\n{s.get('mrz_data', 'N/A')}", language="text")
+        
+        if s.get("preprocessed_img"):
+            with st.expander("🔬 View OpenCV OCR Preprocessed Enhancement Image"):
+                st.image(s["preprocessed_img"], caption="Adaptive CLAHE Noise Reduction & Contrast Filter", use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with tab3:
+        st.markdown("<div class='content-card'><div class='card-title'>🔍 ERROR LEVEL ANALYSIS (ELA) VISUAL MAP</div>", unsafe_allow_html=True)
+        st.markdown("High-intensity visual brightness variance highlights re-compressed or spliced image regions.")
+        if s.get("ela_image"):
+            st.image(s["ela_image"], caption="Error Level Analysis (ELA) Compression Map", use_container_width=True)
+        else:
+            st.info("ELA Visual Map available for live uploads.")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with tab4:
+        st.markdown("<div class='content-card'><div class='card-title'>🔦 ULTRAVIOLET (365nm) SECURITY LAMP SIMULATION</div>", unsafe_allow_html=True)
+        st.markdown("Simulates UV lamp illumination to reveal optical watermarks, fluorescent threads, and state crests.")
+        if s.get("uv_image"):
+            st.image(s["uv_image"], caption="UV 365nm Optical Watermark & Fluorescence Analysis Map", use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with tab5:
+        st.markdown("<div class='content-card'><div class='card-title'>👤 BIOMETRIC FACE MATCH & 3D LIVENESS ANALYSIS</div>", unsafe_allow_html=True)
+        st.markdown(f"**Face Match Score:** `{s['face_match_score']}%` • **Face Status:** `{s['face_status']}`")
+        st.markdown(f"**3D Face Liveness:** `{s.get('liveness_status', 'VERIFIED REAL')} ({s.get('liveness_score', 96.0)}%)`")
+        
+        view_mode = st.radio("Visual Overlay Mode", ["🕸️ Biometric Landmark Mesh & Feature Triangulation", "🔲 Standard Bounding Box"], horizontal=True, key=f"face_view_mode_{s['screening_id']}")
+        
+        use_mesh = "Mesh" in view_mode
+        doc_vis = s.get("mesh_doc") if use_mesh and s.get("mesh_doc") else s.get("annotated_doc")
+        live_vis = s.get("mesh_live") if use_mesh and s.get("mesh_live") else s.get("annotated_live")
+
+        f_col1, f_col2 = st.columns(2)
+        with f_col1:
+            if doc_vis:
+                st.image(doc_vis, caption="Document Portrait Landmark Mesh & Vector Geometry", use_container_width=True)
+        with f_col2:
+            if live_vis:
+                st.image(live_vis, caption="Live Traveler Photo Landmark Mesh & Vector Geometry", use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with tab6:
+        st.markdown("<div class='content-card'><div class='card-title'>📶 e-PASSPORT RFID MICROCHIP DATA (NFC / PKI)</div>", unsafe_allow_html=True)
+        chip = s["validation_results"].get("epassport_chip", {})
+        st.json(chip)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # PDF Download Button
+    pdf_file = generate_pdf_report(s)
+    with open(pdf_file, "rb") as f:
+        st.download_button(
+            label="📥 DOWNLOAD PDF AUDIT REPORT",
+            data=f,
+            file_name=f"Screening_Report_{s['screening_id']}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+            key=f"pdf_btn_{s['screening_id']}"
+        )
+
+
 # PAGE 1: DASHBOARD
 if clean_page_name == "Dashboard":
     render_header("COMMAND CENTER DASHBOARD", "Real-time border checkpoint identity & document screening metrics")
@@ -203,7 +345,7 @@ if clean_page_name == "Dashboard":
 
         st.markdown(f"""
             <div style='margin-bottom:16px;'>
-                <div style='display:flex; justify-between; font-size:0.88rem; margin-bottom:6px;'>
+                <div style='display:flex; justify-content:space-between; font-size:0.88rem; margin-bottom:6px;'>
                     <span style='color:#ef4444; font-weight:600;'>🔴 High Risk Screenings</span>
                     <span style='color:#f8fafc; font-weight:700;'>{stats['high']} ({high_pct}%)</span>
                 </div>
@@ -375,151 +517,10 @@ elif clean_page_name == "New Screening":
             save_screening(screening_record)
             st.session_state.current_screening = screening_record
             st.success(f"Screening Completed in {proc_time}s! ID: {sid}")
-            st.rerun()
+            render_screening_results(screening_record)
 
-    # Render Current Screening Result if available
-    if st.session_state.current_screening:
-        s = st.session_state.current_screening
-        st.markdown("---")
-        
-        # Result Header Card
-        risk_lvl = s["risk_level"]
-        risk_cls = "high" if risk_lvl == "HIGH" else ("medium" if risk_lvl == "MEDIUM" else "low")
-        
-        # High Risk Alert Dispatch Banner
-        if risk_lvl == "HIGH":
-            st.markdown(f"""
-                <div style='background: linear-gradient(90deg, #7f1d1d 0%, #991b1b 100%); border: 2px solid #ef4444; border-radius: 8px; padding: 14px 20px; margin-bottom: 15px;'>
-                    <div style='font-size:1.1rem; font-weight:700; color:#f8fafc;'>🚨 SECURITY THREAT ALERT DISPATCHED</div>
-                    <p style='margin:4px 0 0 0; color:#fca5a5; font-size:0.85rem;'>Screening ID {s['screening_id']} flagged as HIGH RISK ({s['risk_score']}/100). Automated dispatch sent to Duty Supervisor & Counter Officer.</p>
-                </div>
-            """, unsafe_allow_html=True)
-
-        st.markdown(f"""
-            <div class='content-card' style='border-left: 6px solid #ef4444;'>
-                <div style='display:flex; justify-between; align-items:center;'>
-                    <div>
-                        <h2 style='margin:0; color:#38bdf8; font-family:monospace;'>SCREENING COMPLETE — {s['screening_id']}</h2>
-                        <p style='color:#94a3b8; margin-top:4px;'>Processed in {s['processing_time_sec']}s • {s['timestamp']}</p>
-                    </div>
-                    <div style='text-align:right;'>
-                        <div style='font-size:2.2rem; font-weight:700;' class='metric-value {risk_cls}'>{s['risk_score']} / 100</div>
-                        <span class='status-pill status-{risk_cls}'>{risk_lvl} RISK</span>
-                    </div>
-                </div>
-                <hr style='border-color:#1e293b; margin:15px 0;'>
-                <div style='font-size:1.1rem; font-weight:700; color:#f8fafc;'>
-                    RECOMMENDED ACTION: <span style='color:#ef4444;'>{s['final_decision']}</span>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        # 5 Module Summaries
-        m1, m2, m3, m4, m5 = st.columns(5)
-        with m1:
-            st.markdown(f"<div class='metric-card'><div class='metric-label'>OCR Extraction</div><div class='metric-value info'>{int(s['ocr_confidence']*100)}%</div></div>", unsafe_allow_html=True)
-        with m2:
-            val_st = s["validation_results"].get("status", "PASSED")
-            val_color = "low" if val_st == "PASSED" else "high"
-            st.markdown(f"<div class='metric-card'><div class='metric-label'>Doc Validation</div><div class='metric-value {val_color}'>{val_st}</div></div>", unsafe_allow_html=True)
-        with m3:
-            tamp_k = s["tampering_results"].get("tampering_risk", 0)
-            tamp_color = "high" if tamp_k > 50 else "low"
-            st.markdown(f"<div class='metric-card'><div class='metric-label'>Tampering Risk</div><div class='metric-value {tamp_color}'>{tamp_k}%</div></div>", unsafe_allow_html=True)
-        with m4:
-            face_st = s["face_status"]
-            face_color = "low" if face_st == "MATCH" else "high"
-            st.markdown(f"<div class='metric-card'><div class='metric-label'>Face Match</div><div class='metric-value {face_color}'>{s['face_match_score']}%</div></div>", unsafe_allow_html=True)
-        with m5:
-            db_rec = s["validation_results"].get("db_record")
-            db_status = db_rec.get("status") if db_rec else "CLEAR"
-            db_color = "high" if db_status in ["BLACKLISTED", "REVOKED"] else "low"
-            st.markdown(f"<div class='metric-card'><div class='metric-label'>Security DB</div><div class='metric-value {db_color}'>{db_status}</div></div>", unsafe_allow_html=True)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # Detailed Factor Analysis & Advanced Visual Tabs
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-            "📌 Key Findings & Factors", 
-            "📄 Extracted Fields & MRZ", 
-            "🔍 Tampering & ELA Map", 
-            "🔦 UV Lamp Security Check", 
-            "👤 Face Match & Liveness", 
-            "📶 e-Passport NFC Chip"
-        ])
-
-        with tab1:
-            st.markdown("<div class='content-card'><div class='card-title'>🔴 CONTRIBUTING RISK FACTORS (EXPLAINABLE AI)</div>", unsafe_allow_html=True)
-            for factor in s["contributing_factors"]:
-                if factor.startswith("+"):
-                    st.markdown(f"<p style='color:#ef4444; font-family:monospace; margin:4px 0;'>{factor}</p>", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"<p style='color:#22c55e; font-family:monospace; margin:4px 0;'>{factor}</p>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        with tab2:
-            st.markdown("<div class='content-card'><div class='card-title'>📄 EXTRACTED DOCUMENT FIELDS</div>", unsafe_allow_html=True)
-            st.json(s["extracted_fields"])
-            st.code(f"MRZ READOUT:\n{s.get('mrz_data', 'N/A')}", language="text")
-            
-            if s.get("preprocessed_img"):
-                with st.expander("🔬 View OpenCV OCR Preprocessed Enhancement Image"):
-                    st.image(s["preprocessed_img"], caption="Adaptive CLAHE Noise Reduction & Contrast Filter", use_container_width=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        with tab3:
-            st.markdown("<div class='content-card'><div class='card-title'>🔍 ERROR LEVEL ANALYSIS (ELA) VISUAL MAP</div>", unsafe_allow_html=True)
-            st.markdown("High-intensity visual brightness variance highlights re-compressed or spliced image regions.")
-            if s.get("ela_image"):
-                st.image(s["ela_image"], caption="Error Level Analysis (ELA) Compression Map", use_container_width=True)
-            else:
-                st.info("ELA Visual Map available for live uploads.")
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        with tab4:
-            st.markdown("<div class='content-card'><div class='card-title'>🔦 ULTRAVIOLET (365nm) SECURITY LAMP SIMULATION</div>", unsafe_allow_html=True)
-            st.markdown("Simulates UV lamp illumination to reveal optical watermarks, fluorescent threads, and state crests.")
-            if s.get("uv_image"):
-                st.image(s["uv_image"], caption="UV 365nm Optical Watermark & Fluorescence Analysis Map", use_container_width=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        with tab5:
-            st.markdown("<div class='content-card'><div class='card-title'>👤 BIOMETRIC FACE MATCH & 3D LIVENESS ANALYSIS</div>", unsafe_allow_html=True)
-            st.markdown(f"**Face Match Score:** `{s['face_match_score']}%` • **Face Status:** `{s['face_status']}`")
-            st.markdown(f"**3D Face Liveness:** `{s.get('liveness_status', 'VERIFIED REAL')} ({s.get('liveness_score', 96.0)}%)`")
-            
-            # Interactive Visual Mode Toggle for Biometric Mesh
-            view_mode = st.radio("Visual Overlay Mode", ["🕸️ Biometric Landmark Mesh & Feature Triangulation", "🔲 Standard Bounding Box"], horizontal=True, key="face_view_mode")
-            
-            use_mesh = "Mesh" in view_mode
-            doc_vis = s.get("mesh_doc") if use_mesh and s.get("mesh_doc") else s.get("annotated_doc")
-            live_vis = s.get("mesh_live") if use_mesh and s.get("mesh_live") else s.get("annotated_live")
-
-            f_col1, f_col2 = st.columns(2)
-            with f_col1:
-                if doc_vis:
-                    st.image(doc_vis, caption="Document Portrait Landmark Mesh & Vector Geometry", use_container_width=True)
-            with f_col2:
-                if live_vis:
-                    st.image(live_vis, caption="Live Traveler Photo Landmark Mesh & Vector Geometry", use_container_width=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        with tab6:
-            st.markdown("<div class='content-card'><div class='card-title'>📶 e-PASSPORT RFID MICROCHIP DATA (NFC / PKI)</div>", unsafe_allow_html=True)
-            chip = s["validation_results"].get("epassport_chip", {})
-            st.json(chip)
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        # PDF Download Button
-        pdf_file = generate_pdf_report(s)
-        with open(pdf_file, "rb") as f:
-            st.download_button(
-                label="📥 DOWNLOAD PDF AUDIT REPORT",
-                data=f,
-                file_name=f"Screening_Report_{s['screening_id']}.pdf",
-                mime="application/pdf",
-                use_container_width=True
-            )
+    elif st.session_state.current_screening:
+        render_screening_results(st.session_state.current_screening)
 
 
 # PAGE 3: SCREENING HISTORY
