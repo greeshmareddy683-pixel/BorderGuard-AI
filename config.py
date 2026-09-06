@@ -16,7 +16,7 @@ for directory in [DATABASE_DIR, REPORTS_DIR, DEMO_DIR, ASSETS_DIR]:
 # Application Branding
 APP_NAME = "BORDERGUARD AI"
 APP_SUBTITLE = "AI-Powered Identity & Document Screening System"
-APP_TAGLINE = "Secure Screening Environment"
+APP_TAGLINE = "Secure Screening Environment • Production v2.5"
 
 # Default Risk Engine Weights (Must sum to 1.0 or 100%)
 DEFAULT_RISK_WEIGHTS = {

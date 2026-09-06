@@ -147,6 +147,24 @@ def get_all_screenings():
         logger.error(f"Get screenings error: {e}")
         return []
 
+def get_screening_by_id(screening_id):
+    """Retrieves a single screening record by Screening ID."""
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM screenings WHERE screening_id = ?", (screening_id,))
+            row = cursor.fetchone()
+            if row:
+                d = dict(row)
+                d["extracted_fields"] = json.loads(d["extracted_fields"]) if d["extracted_fields"] else {}
+                d["validation_results"] = json.loads(d["validation_results"]) if d["validation_results"] else {}
+                d["tampering_results"] = json.loads(d["tampering_results"]) if d["tampering_results"] else {}
+                d["contributing_factors"] = json.loads(d["contributing_factors"]) if d["contributing_factors"] else []
+                return d
+    except Exception as e:
+        logger.error(f"Get screening by ID error: {e}")
+    return None
+
 def get_dashboard_stats():
     """Returns aggregated stats for the main dashboard header cards."""
     try:
