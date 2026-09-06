@@ -95,4 +95,4 @@ The app will open automatically at `http://localhost:8501`.
 
 ---
 
-<p align="center"><i>BORDERGUARD AI — built for Smart India Hackathon</i></p>
+<p align="center"><i>BORDERGUARD AI 
