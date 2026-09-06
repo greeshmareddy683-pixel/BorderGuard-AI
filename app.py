@@ -1,9 +1,14 @@
 import time
 import json
+import logging
 import streamlit as st
 from pathlib import Path
 from PIL import Image
 import numpy as np
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("BORDERGUARD_APP")
 
 # Import configuration and custom modules
 from config import APP_NAME, APP_SUBTITLE, APP_TAGLINE, COLOR_PALETTE, BASE_DIR
@@ -210,16 +215,19 @@ def render_screening_results(s):
         st.markdown("</div>", unsafe_allow_html=True)
 
     # PDF Download Button
-    pdf_file = generate_pdf_report(s)
-    with open(pdf_file, "rb") as f:
-        st.download_button(
-            label="📥 DOWNLOAD PDF AUDIT REPORT",
-            data=f,
-            file_name=f"Screening_Report_{s['screening_id']}.pdf",
-            mime="application/pdf",
-            use_container_width=True,
-            key=f"pdf_btn_{s['screening_id']}"
-        )
+    try:
+        pdf_file = generate_pdf_report(s)
+        with open(pdf_file, "rb") as f:
+            st.download_button(
+                label="📥 DOWNLOAD PDF AUDIT REPORT",
+                data=f,
+                file_name=f"Screening_Report_{s['screening_id']}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+                key=f"pdf_btn_{s['screening_id']}"
+            )
+    except Exception as pdf_err:
+        logger.warning(f"PDF report generation skipped: {pdf_err}")
 
 
 # PAGE 1: DASHBOARD
@@ -354,7 +362,7 @@ if clean_page_name == "Dashboard":
                 </div>
             </div>
             <div style='margin-bottom:16px;'>
-                <div style='display:flex; justify-between; font-size:0.88rem; margin-bottom:6px;'>
+                <div style='display:flex; justify-content:space-between; font-size:0.88rem; margin-bottom:6px;'>
                     <span style='color:#f59e0b; font-weight:600;'>🟠 Medium Risk Screenings</span>
                     <span style='color:#f8fafc; font-weight:700;'>{stats['medium']} ({med_pct}%)</span>
                 </div>
@@ -363,7 +371,7 @@ if clean_page_name == "Dashboard":
                 </div>
             </div>
             <div style='margin-bottom:16px;'>
-                <div style='display:flex; justify-between; font-size:0.88rem; margin-bottom:6px;'>
+                <div style='display:flex; justify-content:space-between; font-size:0.88rem; margin-bottom:6px;'>
                     <span style='color:#22c55e; font-weight:600;'>🟢 Low Risk (Cleared)</span>
                     <span style='color:#f8fafc; font-weight:700;'>{stats['low']} ({low_pct}%)</span>
                 </div>
@@ -436,88 +444,93 @@ elif clean_page_name == "New Screening":
         if doc_file is None:
             st.error("Please upload a travel document image!")
         else:
-            t_start = time.time()
-            progress_bar = st.progress(0)
-            status_text = st.empty()
+            try:
+                t_start = time.time()
+                progress_bar = st.progress(0)
+                status_text = st.empty()
 
-            # Step 1: Receiving Document
-            status_text.markdown("`[1/6] Processing document image...`")
-            doc_img = Image.open(doc_file)
-            preprocessed_img = preprocess_image_for_ocr(doc_img)
-            progress_bar.progress(15)
+                # Step 1: Receiving Document
+                status_text.markdown("`[1/6] Processing document image...`")
+                doc_img = Image.open(doc_file)
+                preprocessed_img = preprocess_image_for_ocr(doc_img)
+                progress_bar.progress(15)
 
-            # Step 2: OCR Extraction
-            status_text.markdown("`[2/6] Running OCR & MRZ Field Extraction...`")
-            ocr_res = extract_document_info(doc_img)
-            progress_bar.progress(35)
+                # Step 2: OCR Extraction
+                status_text.markdown("`[2/6] Running OCR & MRZ Field Extraction...`")
+                ocr_res = extract_document_info(doc_img)
+                progress_bar.progress(35)
 
-            # Step 3: Document Validation & e-Passport Chip Check
-            status_text.markdown("`[3/6] Validating document dates, format, e-Passport NFC chip, and Watchlist DB...`")
-            val_res = validate_document_data(ocr_res["fields"], ocr_res["document_type"])
-            progress_bar.progress(55)
+                # Step 3: Document Validation & e-Passport Chip Check
+                status_text.markdown("`[3/6] Validating document dates, format, e-Passport NFC chip, and Watchlist DB...`")
+                val_res = validate_document_data(ocr_res["fields"], ocr_res["document_type"])
+                progress_bar.progress(55)
 
-            # Step 4: Digital Tampering & UV Security Lamp Analysis
-            status_text.markdown("`[4/6] Executing ELA Compression Map & UV Lamp Fluorescence Inspection...`")
-            tamp_res = analyze_tampering(doc_img)
-            meta_res = analyze_metadata(doc_img)
-            tamp_res["indicators"].extend(meta_res["indicators"])
-            progress_bar.progress(75)
+                # Step 4: Digital Tampering & UV Security Lamp Analysis
+                status_text.markdown("`[4/6] Executing ELA Compression Map & UV Lamp Fluorescence Inspection...`")
+                tamp_res = analyze_tampering(doc_img)
+                meta_res = analyze_metadata(doc_img)
+                tamp_res["indicators"].extend(meta_res["indicators"])
+                progress_bar.progress(75)
 
-            # Step 5: Face Verification & Liveness Anti-Spoof Check
-            status_text.markdown("`[5/6] Verifying biometric facial embeddings & 3D face liveness...`")
-            live_img = Image.open(live_file) if live_file is not None else None
-            face_res = verify_faces(doc_img, live_img)
-            progress_bar.progress(90)
+                # Step 5: Face Verification & Liveness Anti-Spoof Check
+                status_text.markdown("`[5/6] Verifying biometric facial embeddings & 3D face liveness...`")
+                live_img = Image.open(live_file) if live_file is not None else None
+                face_res = verify_faces(doc_img, live_img)
+                progress_bar.progress(90)
 
-            # Step 6: Risk Scoring Engine
-            status_text.markdown("`[6/6] Computing explainable risk score & generating audit record...`")
-            risk_res = calculate_risk_score(ocr_res, val_res, tamp_res, face_res)
-            progress_bar.progress(100)
-            t_end = time.time()
+                # Step 6: Risk Scoring Engine
+                status_text.markdown("`[6/6] Computing explainable risk score & generating audit record...`")
+                risk_res = calculate_risk_score(ocr_res, val_res, tamp_res, face_res)
+                progress_bar.progress(100)
+                t_end = time.time()
 
-            proc_time = round(t_end - t_start, 2)
-            sid = generate_screening_id()
+                proc_time = round(t_end - t_start, 2)
+                sid = generate_screening_id()
 
-            doc_num = ocr_res["fields"].get("Passport Number") or ocr_res["fields"].get("Passport Number / ID") or "P1234567"
-            holder_name = ocr_res["fields"].get("Full Name") or "UNKNOWN HOLDER"
+                doc_num = ocr_res["fields"].get("Passport Number") or ocr_res["fields"].get("Passport Number / ID") or "P1234567"
+                holder_name = ocr_res["fields"].get("Full Name") or "UNKNOWN HOLDER"
 
-            # Construct final screening record dict
-            screening_record = {
-                "screening_id": sid,
-                "timestamp": get_current_timestamp(),
-                "document_type": ocr_res["document_type"],
-                "holder_name": holder_name,
-                "document_number": doc_num,
-                "mrz_data": ocr_res["mrz_string"],
-                "ocr_confidence": ocr_res["ocr_confidence"],
-                "extracted_fields": ocr_res["fields"],
-                "validation_results": val_res,
-                "tampering_results": {
-                    "tampering_risk": tamp_res["tampering_risk"],
-                    "indicators": tamp_res["indicators"]
-                },
-                "face_match_score": face_res["match_score"],
-                "face_status": face_res["status"],
-                "liveness_score": face_res.get("liveness_score", 96.0),
-                "liveness_status": face_res.get("liveness_status", "VERIFIED REAL"),
-                "risk_score": risk_res["risk_score"],
-                "risk_level": risk_res["risk_level"],
-                "final_decision": risk_res["final_decision"],
-                "processing_time_sec": proc_time,
-                "contributing_factors": risk_res["contributing_factors"],
-                "ela_image": tamp_res.get("ela_image"),
-                "uv_image": tamp_res.get("uv_image"),
-                "preprocessed_img": preprocessed_img,
-                "annotated_doc": face_res.get("annotated_doc"),
-                "mesh_doc": face_res.get("mesh_doc"),
-                "annotated_live": face_res.get("annotated_live"),
-                "mesh_live": face_res.get("mesh_live")
-            }
+                # Construct final screening record dict
+                screening_record = {
+                    "screening_id": sid,
+                    "timestamp": get_current_timestamp(),
+                    "document_type": ocr_res["document_type"],
+                    "holder_name": holder_name,
+                    "document_number": doc_num,
+                    "mrz_data": ocr_res["mrz_string"],
+                    "ocr_confidence": ocr_res["ocr_confidence"],
+                    "extracted_fields": ocr_res["fields"],
+                    "validation_results": val_res,
+                    "tampering_results": {
+                        "tampering_risk": tamp_res["tampering_risk"],
+                        "indicators": tamp_res["indicators"]
+                    },
+                    "face_match_score": face_res["match_score"],
+                    "face_status": face_res["status"],
+                    "liveness_score": face_res.get("liveness_score", 96.0),
+                    "liveness_status": face_res.get("liveness_status", "VERIFIED REAL"),
+                    "risk_score": risk_res["risk_score"],
+                    "risk_level": risk_res["risk_level"],
+                    "final_decision": risk_res["final_decision"],
+                    "processing_time_sec": proc_time,
+                    "contributing_factors": risk_res["contributing_factors"],
+                    "ela_image": tamp_res.get("ela_image"),
+                    "uv_image": tamp_res.get("uv_image"),
+                    "preprocessed_img": preprocessed_img,
+                    "annotated_doc": face_res.get("annotated_doc"),
+                    "mesh_doc": face_res.get("mesh_doc"),
+                    "annotated_live": face_res.get("annotated_live"),
+                    "mesh_live": face_res.get("mesh_live")
+                }
 
-            save_screening(screening_record)
-            st.session_state.current_screening = screening_record
-            st.success(f"Screening Completed in {proc_time}s! ID: {sid}")
-            render_screening_results(screening_record)
+                save_screening(screening_record)
+                st.session_state.current_screening = screening_record
+                st.success(f"Screening Completed in {proc_time}s! ID: {sid}")
+                render_screening_results(screening_record)
+
+            except Exception as pipeline_err:
+                logger.error(f"Pipeline execution warning: {pipeline_err}")
+                st.error(f"Screening Processing Error: {pipeline_err}")
 
     elif st.session_state.current_screening:
         render_screening_results(st.session_state.current_screening)
